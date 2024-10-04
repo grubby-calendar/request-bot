@@ -93,13 +93,22 @@ export class DiscordBot {
       console.log(`Updated message (reaction-rem): ${message.user}`);
     });
 
+    // When a moderator clears all reactions from a message
+    this.client.on('messageReactionRemoveAll', m => {
+      const message = this.messages.find(m.id);
+      if (!message) return;
+      message.isDone = false;
+      this.broadcast({ type: 'update-message', message });
+      console.log(`Updated message (reaction-rem-all): ${message.user}`);
+    });
+
     // Listen for messages being deleted
-    this.client.on('messageDelete', message => {
-      const existing = this.messages.find(message.id);
-      if (!existing) return;
-      this.messages.delete(existing.id);
-      this.broadcast({ type: 'delete-message', id: existing.id });
-      console.log(`Deleted message: ${existing.user}`);
+    this.client.on('messageDelete', m => {
+      const message = this.messages.find(m.id);
+      if (!message) return;
+      this.messages.delete(message.id);
+      this.broadcast({ type: 'delete-message', id: message.id });
+      console.log(`Deleted message: ${message.user}`);
     });
 
     // Log in the bot with the provided token

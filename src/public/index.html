@@ -12,16 +12,26 @@
 <body>
   <div x-data="app" class="p-4 flex flex-col max-w-[400px]">
     <template x-for="message in messages" :key="message.id">
-      <div class="border(2 gray-400) rounded-lg bg-gray-200 p-3 mt-2 w-full">
-        <div>
-          <span x-text="message.isDone ? '✅' : '⏳'"></span> <span x-text="message.shortDescription"/>
+      <div
+        class="border-2 rounded-lg bg-gray-200 p-3 mt-2 w-full"
+        :class="message.isDone ? 'border-green-300 bg-green-100' : 'border-yellow-300 bg-yellow-100'"
+      >
+        <div
+          class="font-medium text-lg"
+          :class="message.isDone ? 'text-green-900' : 'text-yellow-900'"
+        >
+          <span x-text="message.isDone ? '✅' : '⏳'"/ class="mr-1"></span>
+          <span x-text="message.shortDescription"></span>
         </div>
-        <div class="text(gray-500) flex justify-between mt-1">
+        <div
+          class="flex justify-between mt-2"
+          :class="message.isDone ? 'text-green-700' : 'text-yellow-700'"
+        >
           <div>
             @<span x-text="message.user"></span>
           </div>
           <div>
-            <span x-text="moment(message.requestDate).format('DD-MMM-YY')"></span>
+            <span class="font-mono" x-text="moment(message.requestDate).format('DD-MMM-YY')"></span>
           </div>
         </div>
       </div>
