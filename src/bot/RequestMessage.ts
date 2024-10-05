@@ -3,7 +3,7 @@ import moment from 'moment';
 
 export const DoneReaction = "✅";
 
-export class ParsedMessage {
+export class RequestMessage {
   id: string = "";
   user: string = "";
   shortDescription: string = "";

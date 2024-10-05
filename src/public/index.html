@@ -11,27 +11,27 @@
 </head>
 <body>
   <div x-data="app" class="p-4 flex flex-col max-w-[400px]">
-    <template x-for="message in messages" :key="message.id">
+    <template x-for="req in requests" :key="req.id">
       <div
         class="border-2 rounded-lg bg-gray-200 p-3 mt-2 w-full"
-        :class="message.isDone ? 'border-green-300 bg-green-100' : 'border-yellow-300 bg-yellow-100'"
+        :class="req.isDone ? 'border-green-300 bg-green-100' : 'border-yellow-300 bg-yellow-100'"
       >
         <div
           class="font-medium text-lg"
-          :class="message.isDone ? 'text-green-900' : 'text-yellow-900'"
+          :class="req.isDone ? 'text-green-900' : 'text-yellow-900'"
         >
-          <span x-text="message.isDone ? '✅' : '⏳'"/ class="mr-1"></span>
-          <span x-text="message.shortDescription"></span>
+          <span x-text="req.isDone ? '✅' : '⏳'"/ class="mr-1"></span>
+          <span x-text="req.shortDescription"></span>
         </div>
         <div
           class="flex justify-between mt-2"
-          :class="message.isDone ? 'text-green-700' : 'text-yellow-700'"
+          :class="req.isDone ? 'text-green-700' : 'text-yellow-700'"
         >
           <div>
-            @<span x-text="message.user"></span>
+            @<span x-text="req.user"></span>
           </div>
-          <div x-show="message.requestDate !== null">
-            <span class="font-mono" x-text="moment(message.requestDate).format('DD-MMM-YY')"></span>
+          <div x-show="req.requestDate !== null">
+            <span class="font-mono" x-text="moment(req.requestDate).format('DD-MMM-YY')"></span>
           </div>
         </div>
       </div>
@@ -42,27 +42,27 @@
     const url = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
     document.addEventListener('alpine:init', () => {
       Alpine.data('app', () => ({
-        messages: [],
+        requests: [],
         ws: null,
         async init() {
-          this.messages = (await (await fetch('/api/data')).json())?.messages ?? [];
-          this.sortMessages();
+          this.requests = (await (await fetch('/api/data')).json())?.requests ?? [];
+          this.sortRequests();
 
           this.ws = new WebSocket(url);
           this.ws.onmessage = async (message) => {
             const data = JSON.parse(message.data);
             switch (data.type) {
               case 'add-message':
-                this.messages.push(data.message);
+                this.requests.push(data.message);
                 break;
               case 'update-message':
-                this.messages = this.messages.map(m => m.id === data.message.id ? data.message : m);
+                this.requests = this.requests.map(m => m.id === data.message.id ? data.message : m);
                 break;
               case 'delete-message':
-                this.messages = this.messages.filter(m => m.id !== data.id);
+                this.requests = this.requests.filter(m => m.id !== data.id);
                 break;
             }
-            this.sortMessages();
+            this.sortRequests();
           };
 
           // If we lose connection, try to reconnect every 3 seconds
@@ -73,8 +73,8 @@
             }, 3000);
           };
         },
-        sortMessages() {
-          this.messages = this.messages.sort((a, b) => +new Date(a.requestDate) - +new Date(b.requestDate));
+        sortRequests() {
+          this.requests = this.requests.sort((a, b) => +new Date(a.requestDate) - +new Date(b.requestDate));
         },
       }));
     });

@@ -15,7 +15,7 @@ export class ApiRouter {
     this.router.get('/data', (req, res) => {
       res.json({
         timestamp: new Date().toISOString(),
-        messages: this.discordBot.messages.all(),
+        requests: this.discordBot.requests.all(),
       });
     });
   }

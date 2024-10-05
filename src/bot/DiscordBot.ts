@@ -1,14 +1,14 @@
 import { ChannelType, Client, GatewayIntentBits, PermissionFlagsBits } from 'discord.js';
 import type { GuildTextBasedChannel, Message } from 'discord.js';
 import type { WebSocketServer } from 'ws';
-import { ParsedMessage, DoneReaction } from './ParsedMessage.ts';
+import { RequestMessage, DoneReaction } from './RequestMessage.ts';
 import { IndexedArray } from '../util/IndexedArray.ts';
 
 const TOKEN = process.env.DISCORD_TOKEN; // Your bot token from the .env file
 const CHANNEL_ID = process.env.CHANNEL_ID; // The ID of the channel to poll
 const MESSAGE_COUNT = 50; // Number of messages to fetch
 
-enum MessageType {
+enum BroadcastType {
   AddMessage = 'add-message',
   UpdateMessage = 'update-message',
   DeleteMessage = 'delete-message',
@@ -19,7 +19,7 @@ export class DiscordBot {
   channel: GuildTextBasedChannel | null = null;
   wss: WebSocketServer | null;
 
-  messages: IndexedArray<ParsedMessage>;
+  requests: IndexedArray<RequestMessage>;
 
   constructor() {
     // Initialize the bot client with the necessary intents
@@ -31,7 +31,11 @@ export class DiscordBot {
         GatewayIntentBits.GuildMessageReactions,
       ]
     });
-    this.messages = new IndexedArray<ParsedMessage>(message => message.id);
+    this.requests = new IndexedArray<RequestMessage>(message => message.id);
+  }
+
+  setWebSocketServer(wss: WebSocketServer) {
+    this.wss = wss;
   }
 
   start() {
@@ -53,23 +57,23 @@ export class DiscordBot {
       if (m.channel.type === ChannelType.PublicThread) {
         const starter = await m.channel.fetchStarterMessage();
         if (!starter) return;
-        const existing = this.messages.find(starter.id);
-        if (!existing) return;
-        existing.override(starter);
+        const request = this.requests.find(starter.id);
+        if (!request) return;
+        request.override(starter);
         (await m.channel.messages.fetch())
           ?.sort(this.sortMessages)
-          .forEach(tm => existing.override(tm));
-        this.broadcast({ type: 'update-message', message: existing });
-        console.log(`Updated message (thread-msg): ${existing.user}`);
+          .forEach(tm => request.override(tm));
+        this.broadcast({ type: BroadcastType.UpdateMessage, request });
+        console.log(`Updated message (thread-msg): ${request.user}`);
         return;
       }
       if (m.channel.type === ChannelType.GuildText) {
         if (m.channel.id !== this.channel?.id) return;
-        const message = new ParsedMessage(m);
-        if (!message.isValid()) return;
-        this.messages.push(message);
-        this.broadcast({ type: 'add-message', message });
-        console.log(`Updated message (msg-create): ${message.user}`);
+        const request = new RequestMessage(m);
+        if (!request.isValid()) return;
+        this.requests.push(request);
+        this.broadcast({ type: BroadcastType.AddMessage, request });
+        console.log(`Updated message (msg-create): ${request.user}`);
         return;
       }
     });
@@ -81,26 +85,26 @@ export class DiscordBot {
       if (m.channel.type === ChannelType.PublicThread) {
         const starter = await m.channel.fetchStarterMessage();
         if (!starter) return;
-        const existing = this.messages.find(starter.id);
-        if (!existing) return;
-        existing.override(m);
+        const request = this.requests.find(starter.id);
+        if (!request) return;
+        request.override(m);
         (await m.channel.messages.fetch())
           ?.sort(this.sortMessages)
-          .forEach(tm => existing.override(tm));
-        this.broadcast({ type: 'update-message', message: existing });
-        console.log(`Updated message (thread-msg-upd): ${existing.user}`);
+          .forEach(tm => request.override(tm));
+        this.broadcast({ type: BroadcastType.UpdateMessage, request });
+        console.log(`Updated message (thread-msg-upd): ${request.user}`);
         return;
       }
       if (m.channel.type === ChannelType.GuildText) {
         if (m.channel.id !== this.channel?.id) return;
-        const existing = this.messages.find(m.id);
-        if (!existing) return;
-        existing.override(m);
+        const request = this.requests.find(m.id);
+        if (!request) return;
+        request.override(m);
         (await m.channel.messages.fetch())
           ?.sort(this.sortMessages)
-          .forEach(tm => existing.override(tm));
-        this.broadcast({ type: 'update-message', message: existing });
-        console.log(`Updated message (msg-edit): ${existing.user}`);
+          .forEach(tm => request.override(tm));
+        this.broadcast({ type: BroadcastType.UpdateMessage, request });
+        console.log(`Updated message (msg-edit): ${request.user}`);
         return;
       }
     });
@@ -108,40 +112,40 @@ export class DiscordBot {
     // Listen for reactions being added to messages
     this.client.on('messageReactionAdd', (reaction, user) => {
       if (reaction.emoji.name !== DoneReaction) return;
-      const message = this.messages.find(reaction.message.id);
-      if (!message) return;
-      message.isDone = true;
-      this.broadcast({ type: 'update-message', message });
-      console.log(`Updated message (reaction-add): ${message.user}`);
+      const request = this.requests.find(reaction.message.id);
+      if (!request) return;
+      request.isDone = true;
+      this.broadcast({ type: BroadcastType.UpdateMessage, request });
+      console.log(`Updated message (reaction-add): ${request.user}`);
     });
 
     // Listen for reactions being removed from messages
     this.client.on('messageReactionRemove', (reaction, user) => {
       if (reaction.emoji.name !== DoneReaction) return;
       if (reaction.partial || reaction.count > 0) return;
-      const message = this.messages.find(reaction.message.id);
-      if (!message) return;
-      message.isDone = false;
-      this.broadcast({ type: 'update-message', message });
-      console.log(`Updated message (reaction-rem): ${message.user}`);
+      const request = this.requests.find(reaction.message.id);
+      if (!request) return;
+      request.isDone = false;
+      this.broadcast({ type: BroadcastType.UpdateMessage, request });
+      console.log(`Updated message (reaction-rem): ${request.user}`);
     });
 
     // When a moderator clears all reactions from a message
     this.client.on('messageReactionRemoveAll', m => {
-      const message = this.messages.find(m.id);
-      if (!message) return;
-      message.isDone = false;
-      this.broadcast({ type: 'update-message', message });
-      console.log(`Updated message (reaction-rem-all): ${message.user}`);
+      const request = this.requests.find(m.id);
+      if (!request) return;
+      request.isDone = false;
+      this.broadcast({ type: BroadcastType.UpdateMessage, request });
+      console.log(`Updated message (reaction-rem-all): ${request.user}`);
     });
 
     // Listen for messages being deleted
     this.client.on('messageDelete', async m => {
-      const message = this.messages.find(m.id);
+      const message = this.requests.find(m.id);
       // If the message is one we're tracking, just remove it
       if (message) {
-        this.messages.delete(message.id);
-        this.broadcast({ type: 'delete-message', id: message.id });
+        this.requests.delete(message.id);
+        this.broadcast({ type: BroadcastType.DeleteMessage, id: message.id });
         console.log(`Deleted message: ${message.user}`);
         return;
       }
@@ -150,14 +154,14 @@ export class DiscordBot {
       if (m.channel.type !== ChannelType.PublicThread) return;
       const starter = await m.channel.fetchStarterMessage();
       if (!starter) return;
-      const existing = this.messages.find(starter.id);
-      if (!existing) return;
-      existing.override(starter);
+      const request = this.requests.find(starter.id);
+      if (!request) return;
+      request.override(starter);
       (await m.channel.messages.fetch())
         ?.sort(this.sortMessages)
-        .forEach(tm => existing.override(tm));
-      this.broadcast({ type: 'update-message', message: existing });
-      console.log(`Updated message (thread-msg-del): ${existing.user}`);
+        .forEach(tm => request.override(tm));
+      this.broadcast({ type: BroadcastType.UpdateMessage, request });
+      console.log(`Updated message (thread-msg-del): ${request.user}`);
       return;
     });
 
@@ -208,7 +212,7 @@ export class DiscordBot {
           .filter(m => !m.system) // Ignore system messages
           .map(async (m) => {
             // Parse the message
-            const message = new ParsedMessage(m);
+            const message = new RequestMessage(m);
             // If the message has a thread, use them as overrides
             (await m.thread?.messages.fetch())
               ?.sort(this.sortMessages)
@@ -218,10 +222,10 @@ export class DiscordBot {
         );
 
       // Store them
-      this.messages.massUpdate(parsedMessages.filter(m => m.isValid()));
+      this.requests.massUpdate(parsedMessages.filter(m => m.isValid()));
 
       // Log the messages for debugging
-      this.messages.all()
+      this.requests.all()
         .sort((a, b) => +(a.requestDate || 0) - +(b.requestDate || 0))
         .forEach(message => {
           console.debug(`User: ${message.user} | Request: ${message.shortDescription} | Date: ${message.shortDate()} | Done: ${message.isDone ? 'Yes' : 'No'}`);
@@ -233,10 +237,6 @@ export class DiscordBot {
 
   sortMessages(a: Message, b: Message) {
     return +(a.createdTimestamp || 0) - +(b.createdTimestamp || 0);
-  }
-
-  setWebSocketServer(wss: WebSocketServer) {
-    this.wss = wss;
   }
 
   broadcast(message: object) {
