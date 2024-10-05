@@ -55,6 +55,7 @@ export class DiscordBot {
         if (!starter) return;
         const existing = this.messages.find(starter.id);
         if (!existing) return;
+        existing.override(starter);
         (await m.channel.messages.fetch())
           ?.sort((a, b) => +(a.createdTimestamp) - +(b.createdTimestamp))
           .forEach(tm => existing.override(tm));
@@ -103,12 +104,26 @@ export class DiscordBot {
     });
 
     // Listen for messages being deleted
-    this.client.on('messageDelete', m => {
+    this.client.on('messageDelete', async m => {
       const message = this.messages.find(m.id);
-      if (!message) return;
-      this.messages.delete(message.id);
-      this.broadcast({ type: 'delete-message', id: message.id });
-      console.log(`Deleted message: ${message.user}`);
+      if (message) {
+        this.messages.delete(message.id);
+        this.broadcast({ type: 'delete-message', id: message.id });
+        console.log(`Deleted message: ${message.user}`);
+        return;
+      }
+      if (m.channel.type !== ChannelType.PublicThread) return;
+      const starter = await m.channel.fetchStarterMessage();
+      if (!starter) return;
+      const existing = this.messages.find(starter.id);
+      if (!existing) return;
+      existing.override(starter);
+      (await m.channel.messages.fetch())
+        ?.sort((a, b) => +(a.createdTimestamp) - +(b.createdTimestamp))
+        .forEach(tm => existing.override(tm));
+      this.broadcast({ type: 'update-message', message: existing });
+      console.log(`Updated message (thread-msg-del): ${existing.user}`);
+      return;
     });
 
     // Log in the bot with the provided token
