@@ -1,5 +1,5 @@
 import { ChannelType, Client, GatewayIntentBits, PermissionFlagsBits } from 'discord.js';
-import type { GuildTextBasedChannel } from 'discord.js';
+import type { GuildTextBasedChannel, Message } from 'discord.js';
 import type { WebSocketServer } from 'ws';
 import { ParsedMessage, DoneReaction } from './ParsedMessage.ts';
 import { IndexedArray } from '../util/IndexedArray.ts';
@@ -57,7 +57,7 @@ export class DiscordBot {
         if (!existing) return;
         existing.override(starter);
         (await m.channel.messages.fetch())
-          ?.sort((a, b) => +(a.createdTimestamp) - +(b.createdTimestamp))
+          ?.sort(this.sortMessages)
           .forEach(tm => existing.override(tm));
         this.broadcast({ type: 'update-message', message: existing });
         console.log(`Updated message (thread-msg): ${existing.user}`);
@@ -66,9 +66,41 @@ export class DiscordBot {
       if (m.channel.type === ChannelType.GuildText) {
         if (m.channel.id !== this.channel?.id) return;
         const message = new ParsedMessage(m);
+        if (!message.isValid()) return;
         this.messages.push(message);
         this.broadcast({ type: 'add-message', message });
         console.log(`Updated message (msg-create): ${message.user}`);
+        return;
+      }
+    });
+
+    // Listen for messages being edited
+    this.client.on('messageUpdate', async (_, m) => {
+      if (m.system || m.author?.bot) return;
+      if (m.partial) m = await m.fetch();
+      if (m.channel.type === ChannelType.PublicThread) {
+        const starter = await m.channel.fetchStarterMessage();
+        if (!starter) return;
+        const existing = this.messages.find(starter.id);
+        if (!existing) return;
+        existing.override(m);
+        (await m.channel.messages.fetch())
+          ?.sort(this.sortMessages)
+          .forEach(tm => existing.override(tm));
+        this.broadcast({ type: 'update-message', message: existing });
+        console.log(`Updated message (thread-msg-upd): ${existing.user}`);
+        return;
+      }
+      if (m.channel.type === ChannelType.GuildText) {
+        if (m.channel.id !== this.channel?.id) return;
+        const existing = this.messages.find(m.id);
+        if (!existing) return;
+        existing.override(m);
+        (await m.channel.messages.fetch())
+          ?.sort(this.sortMessages)
+          .forEach(tm => existing.override(tm));
+        this.broadcast({ type: 'update-message', message: existing });
+        console.log(`Updated message (msg-edit): ${existing.user}`);
         return;
       }
     });
@@ -106,12 +138,15 @@ export class DiscordBot {
     // Listen for messages being deleted
     this.client.on('messageDelete', async m => {
       const message = this.messages.find(m.id);
+      // If the message is one we're tracking, just remove it
       if (message) {
         this.messages.delete(message.id);
         this.broadcast({ type: 'delete-message', id: message.id });
         console.log(`Deleted message: ${message.user}`);
         return;
       }
+      // If the message was inside of a thread on a message we're tracking,
+      // update the message with any overrides in the thread
       if (m.channel.type !== ChannelType.PublicThread) return;
       const starter = await m.channel.fetchStarterMessage();
       if (!starter) return;
@@ -119,7 +154,7 @@ export class DiscordBot {
       if (!existing) return;
       existing.override(starter);
       (await m.channel.messages.fetch())
-        ?.sort((a, b) => +(a.createdTimestamp) - +(b.createdTimestamp))
+        ?.sort(this.sortMessages)
         .forEach(tm => existing.override(tm));
       this.broadcast({ type: 'update-message', message: existing });
       console.log(`Updated message (thread-msg-del): ${existing.user}`);
@@ -176,14 +211,14 @@ export class DiscordBot {
             const message = new ParsedMessage(m);
             // If the message has a thread, use them as overrides
             (await m.thread?.messages.fetch())
-              ?.sort((a, b) => +(a.createdTimestamp) - +(b.createdTimestamp))
+              ?.sort(this.sortMessages)
               .forEach(tm => message.override(tm));
             return message;
           })
         );
 
       // Store them
-      this.messages.massUpdate(parsedMessages);
+      this.messages.massUpdate(parsedMessages.filter(m => m.isValid()));
 
       // Log the messages for debugging
       this.messages.all()
@@ -195,6 +230,10 @@ export class DiscordBot {
       console.error('Error fetching messages:', error);
     }
   };
+
+  sortMessages(a: Message, b: Message) {
+    return +(a.createdTimestamp || 0) - +(b.createdTimestamp || 0);
+  }
 
   setWebSocketServer(wss: WebSocketServer) {
     this.wss = wss;

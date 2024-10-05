@@ -30,7 +30,7 @@
           <div>
             @<span x-text="message.user"></span>
           </div>
-          <div>
+          <div x-show="message.requestDate !== null">
             <span class="font-mono" x-text="moment(message.requestDate).format('DD-MMM-YY')"></span>
           </div>
         </div>

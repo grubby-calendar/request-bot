@@ -23,6 +23,10 @@ export class ParsedMessage {
     this.extra = this.parseExtra(content) ?? "";
   }
 
+  isValid() {
+    return this.user !== "" && this.shortDescription !== "";
+  }
+
   override(message: Message) {
     const content = this.parseContent(message.content);
 
