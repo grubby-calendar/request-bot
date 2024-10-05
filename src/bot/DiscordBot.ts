@@ -1,4 +1,4 @@
-import { ChannelType, Client, GatewayIntentBits, PermissionFlagsBits } from 'discord.js';
+import { ChannelType, Client, Events, GatewayIntentBits, PermissionFlagsBits } from 'discord.js';
 import type { GuildTextBasedChannel, Message } from 'discord.js';
 import type { WebSocketServer } from 'ws';
 import { RequestMessage, DoneReaction } from './RequestMessage.ts';
@@ -52,8 +52,11 @@ export class DiscordBot {
     });
 
     // Listen for new threads being created on messages we already track
-    this.client.on('messageCreate', async m => {
+    this.client.on(Events.MessageCreate, async m => {
       if (m.system || m.author.bot) return;
+
+      // If the message is in a thread, find its parent message.
+      // If we're tracking this message, use thread messages as overrides.
       if (m.channel.type === ChannelType.PublicThread) {
         const starter = await m.channel.fetchStarterMessage();
         if (!starter) return;
@@ -67,6 +70,9 @@ export class DiscordBot {
         console.log(`Updated message (thread-msg): ${request.user}`);
         return;
       }
+
+      // If the message is in the channel we're tracking, parse it
+      // and add it to the list of tracked requests
       if (m.channel.type === ChannelType.GuildText) {
         if (m.channel.id !== this.channel?.id) return;
         const request = new RequestMessage(m);
@@ -79,9 +85,12 @@ export class DiscordBot {
     });
 
     // Listen for messages being edited
-    this.client.on('messageUpdate', async (_, m) => {
+    this.client.on(Events.MessageUpdate, async (_, m) => {
       if (m.system || m.author?.bot) return;
       if (m.partial) m = await m.fetch();
+
+      // If the updated message is in a thread, find its parent message.
+      // If we're tracking this message, use thread messages as overrides.
       if (m.channel.type === ChannelType.PublicThread) {
         const starter = await m.channel.fetchStarterMessage();
         if (!starter) return;
@@ -95,6 +104,9 @@ export class DiscordBot {
         console.log(`Updated message (thread-msg-upd): ${request.user}`);
         return;
       }
+
+      // If the updated message is in the channel we're tracking, parse it
+      // and update the tracked request with the new information (including thread overrides)
       if (m.channel.type === ChannelType.GuildText) {
         if (m.channel.id !== this.channel?.id) return;
         const request = this.requests.find(m.id);
@@ -110,7 +122,7 @@ export class DiscordBot {
     });
 
     // Listen for reactions being added to messages
-    this.client.on('messageReactionAdd', (reaction, user) => {
+    this.client.on(Events.MessageReactionAdd, (reaction, user) => {
       if (reaction.emoji.name !== DoneReaction) return;
       const request = this.requests.find(reaction.message.id);
       if (!request) return;
@@ -120,7 +132,7 @@ export class DiscordBot {
     });
 
     // Listen for reactions being removed from messages
-    this.client.on('messageReactionRemove', (reaction, user) => {
+    this.client.on(Events.MessageReactionRemove, (reaction, user) => {
       if (reaction.emoji.name !== DoneReaction) return;
       if (reaction.partial || reaction.count > 0) return;
       const request = this.requests.find(reaction.message.id);
@@ -131,7 +143,7 @@ export class DiscordBot {
     });
 
     // When a moderator clears all reactions from a message
-    this.client.on('messageReactionRemoveAll', m => {
+    this.client.on(Events.MessageReactionRemoveAll, m => {
       const request = this.requests.find(m.id);
       if (!request) return;
       request.isDone = false;
@@ -140,7 +152,7 @@ export class DiscordBot {
     });
 
     // Listen for messages being deleted
-    this.client.on('messageDelete', async m => {
+    this.client.on(Events.MessageDelete, async m => {
       const message = this.requests.find(m.id);
       // If the message is one we're tracking, just remove it
       if (message) {
@@ -221,7 +233,7 @@ export class DiscordBot {
           })
         );
 
-      // Store them
+      // Store only valid ones (ignore unformatted messages)
       this.requests.massUpdate(parsedMessages.filter(m => m.isValid()));
 
       // Log the messages for debugging
