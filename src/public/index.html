@@ -53,10 +53,10 @@
             const data = JSON.parse(message.data);
             switch (data.type) {
               case 'add-message':
-                this.requests.push(data.message);
+                this.requests.push(data.request);
                 break;
               case 'update-message':
-                this.requests = this.requests.map(m => m.id === data.message.id ? data.message : m);
+                this.requests = this.requests.map(m => m.id === data.request.id ? data.request : m);
                 break;
               case 'delete-message':
                 this.requests = this.requests.filter(m => m.id !== data.id);
