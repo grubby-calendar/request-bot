@@ -11,7 +11,7 @@
 </head>
 <body>
   <div x-data="app" class="p-4 flex flex-col max-w-[400px]">
-    <template x-for="req in requests" :key="req.id">
+    <template x-for="req in onlyPending" :key="req.id">
       <div
         class="border-2 rounded-lg bg-gray-200 p-3 mt-2 w-full"
         :class="req.isDone ? 'border-green-300 bg-green-100' : 'border-yellow-300 bg-yellow-100'"
@@ -20,7 +20,7 @@
           class="font-medium text-lg"
           :class="req.isDone ? 'text-green-900' : 'text-yellow-900'"
         >
-          <span x-text="req.isDone ? '✅' : '⏳'"/ class="mr-1"></span>
+          <!-- <span x-text="req.isDone ? '✅' : '⏳'"/ class="mr-1"></span> -->
           <span x-text="req.shortDescription"></span>
         </div>
         <div
@@ -72,6 +72,9 @@
               new WebSocket(url).onopen = () => window.location.reload();
             }, 3000);
           };
+        },
+        onlyPending() {
+          return this.requests.filter(req => !req.isDone);
         },
         sortRequests() {
           this.requests = this.requests.sort((a, b) => +new Date(a.requestDate) - +new Date(b.requestDate));
