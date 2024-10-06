@@ -14,18 +14,18 @@
     <template x-for="req in onlyPending" :key="req.id">
       <div
         class="border-2 rounded-lg bg-gray-200 p-3 mt-2 w-full"
-        :class="req.isDone ? 'border-green-300 bg-green-100' : 'border-yellow-300 bg-yellow-100'"
+        :class="req.isDone ? 'border-green-300 bg-green-100' : 'border-gray-300 bg-gray-100'"
       >
         <div
           class="font-medium text-lg"
-          :class="req.isDone ? 'text-green-900' : 'text-yellow-900'"
+          :class="req.isDone ? 'text-green-900' : 'text-gray-900'"
         >
           <!-- <span x-text="req.isDone ? '✅' : '⏳'"/ class="mr-1"></span> -->
           <span x-text="req.shortDescription"></span>
         </div>
         <div
           class="flex justify-between mt-2"
-          :class="req.isDone ? 'text-green-700' : 'text-yellow-700'"
+          :class="req.isDone ? 'text-green-700' : 'text-gray-600'"
         >
           <div>
             @<span x-text="req.user"></span>
