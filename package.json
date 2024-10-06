@@ -4,12 +4,13 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "NODE_OPTIONS='--experimental-transform-types --disable-warning=ExperimentalWarning' node src/index.ts",
+    "start": "cross-env NODE_OPTIONS='--experimental-transform-types --disable-warning=ExperimentalWarning' node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "description": "",
   "dependencies": {
+    "cross-env": "^7.0.3",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
