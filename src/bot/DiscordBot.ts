@@ -67,7 +67,7 @@ export class DiscordBot {
           ?.sort(this.sortMessages)
           .forEach(tm => request.override(tm));
         this.broadcast({ type: BroadcastType.UpdateMessage, request });
-        console.log(`Updated message (thread-msg): ${request.user}`);
+        console.log(`Updated message (thread-msg): ${request.user} ${request.id}`);
         return;
       }
 
@@ -79,7 +79,7 @@ export class DiscordBot {
         if (!request.isValid()) return;
         this.requests.push(request);
         this.broadcast({ type: BroadcastType.AddMessage, request });
-        console.log(`Updated message (msg-create): ${request.user}`);
+        console.log(`Updated message (msg-create): ${request.user} ${request.id}`);
         return;
       }
     });
@@ -101,7 +101,7 @@ export class DiscordBot {
           ?.sort(this.sortMessages)
           .forEach(tm => request.override(tm));
         this.broadcast({ type: BroadcastType.UpdateMessage, request });
-        console.log(`Updated message (thread-msg-upd): ${request.user}`);
+        console.log(`Updated message (thread-msg-upd): ${request.user} ${request.id}`);
         return;
       }
 
@@ -116,7 +116,7 @@ export class DiscordBot {
           ?.sort(this.sortMessages)
           .forEach(tm => request.override(tm));
         this.broadcast({ type: BroadcastType.UpdateMessage, request });
-        console.log(`Updated message (msg-edit): ${request.user}`);
+        console.log(`Updated message (msg-edit): ${request.user} ${request.id}`);
         return;
       }
     });
@@ -128,7 +128,7 @@ export class DiscordBot {
       if (!request) return;
       request.isDone = true;
       this.broadcast({ type: BroadcastType.UpdateMessage, request });
-      console.log(`Updated message (reaction-add): ${request.user}`);
+      console.log(`Updated message (reaction-add ${reaction.emoji.name}): ${request.user} ${request.id}`);
     });
 
     // Listen for reactions being removed from messages
@@ -139,7 +139,7 @@ export class DiscordBot {
       if (!request) return;
       request.isDone = false;
       this.broadcast({ type: BroadcastType.UpdateMessage, request });
-      console.log(`Updated message (reaction-rem): ${request.user}`);
+      console.log(`Updated message (reaction-rem ${reaction.emoji.name}): ${request.user} ${request.id}`);
     });
 
     // When a moderator clears all reactions from a message
@@ -148,7 +148,7 @@ export class DiscordBot {
       if (!request) return;
       request.isDone = false;
       this.broadcast({ type: BroadcastType.UpdateMessage, request });
-      console.log(`Updated message (reaction-rem-all): ${request.user}`);
+      console.log(`Updated message (reaction-rem-all): ${request.user} ${request.id}`);
     });
 
     // Listen for messages being deleted
@@ -173,7 +173,7 @@ export class DiscordBot {
         ?.sort(this.sortMessages)
         .forEach(tm => request.override(tm));
       this.broadcast({ type: BroadcastType.UpdateMessage, request });
-      console.log(`Updated message (thread-msg-del): ${request.user}`);
+      console.log(`Updated message (thread-msg-del): ${request.user} ${request.id}`);
       return;
     });
 
@@ -238,9 +238,10 @@ export class DiscordBot {
 
       // Log the messages for debugging
       this.requests.all()
+        .slice(0)
         .sort((a, b) => +(a.requestDate || 0) - +(b.requestDate || 0))
         .forEach(message => {
-          console.debug(`User: ${message.user} | Request: ${message.shortDescription} | Date: ${message.shortDate()} | Done: ${message.isDone ? 'Yes' : 'No'}`);
+          console.debug(`ID: ${message.id} | User: ${message.user} | Request: ${message.shortDescription} | Date: ${message.shortDate()} | ${message.isDone ? DoneReaction : ''}`);
         });
     } catch (error) {
       console.error('Error fetching messages:', error);

@@ -17,18 +17,18 @@ export class IndexedArray<T> {
   }
 
   size(): number {
-    return this.array.length
+    return this.array.length;
   }
 
   notEmpty(): boolean {
-    return this.array.length > 0
+    return this.array.length > 0;
   }
 
   push(item: T) {
     // Update the index first with the arr position
     // The length is always +1 from the last item's index
     // So if we do it first we avoid needing to -1
-    this.index[this.indexer(item)] = this.array.length
+    this.index[this.indexer(item)] = this.array.length;
 
     // Push the item at the end
     this.array.push(item);
