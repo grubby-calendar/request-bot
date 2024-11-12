@@ -142,6 +142,16 @@ export class DiscordBot {
       console.log(`Updated message (reaction-rem ${reaction.emoji.name}): ${request.user} ${request.id}`);
     });
 
+    // When a moderator removes a specific emoji from a message
+    this.client.on(Events.MessageReactionRemoveEmoji, m => {
+      if (m.emoji.name !== DoneReaction) return;
+      const request = this.requests.find(m.message.id);
+      if (!request) return;
+      request.isDone = false;
+      this.broadcast({ type: BroadcastType.UpdateMessage, request });
+      console.log(`Updated message (reaction-rem-all ${m.emoji.name}): ${request.user} ${request.id}`);
+    });
+
     // When a moderator clears all reactions from a message
     this.client.on(Events.MessageReactionRemoveAll, m => {
       const request = this.requests.find(m.id);
@@ -239,7 +249,7 @@ export class DiscordBot {
       // Log the messages for debugging
       this.requests.all()
         .slice(0)
-        .sort((a, b) => +(a.requestDate || 0) - +(b.requestDate || 0))
+        .sort(RequestMessage.prototype.sort)
         .forEach(message => {
           console.debug(`ID: ${message.id} | User: ${message.user} | Request: ${message.shortDescription} | Date: ${message.shortDate()} | ${message.isDone ? DoneReaction : ''}`);
         });
@@ -247,6 +257,12 @@ export class DiscordBot {
       console.error('Error fetching messages:', error);
     }
   };
+
+  async setDone(request: RequestMessage) {
+    const message = await this.channel?.messages.fetch(request.id);
+    await message?.react(DoneReaction);
+    console.log(`Marked done (${DoneReaction}): ${request.user} ${request.id}`);
+  }
 
   sortMessages(a: Message, b: Message) {
     return +(a.createdTimestamp || 0) - +(b.createdTimestamp || 0);

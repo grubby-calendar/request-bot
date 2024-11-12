@@ -21,6 +21,7 @@ const discordBot = new DiscordBot;
 discordBot.start();
 
 // Wire up the API routes
+app.use(express.json());
 const apiRouter = new ApiRouter(discordBot);
 app.use('/api', apiRouter.getRouter());
 

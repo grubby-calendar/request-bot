@@ -72,4 +72,8 @@ export class RequestMessage {
   shortDate(): string {
     return this.requestDate ? moment(this.requestDate).format('DD-MMM-YY') : "Unknown";
   }
+
+  sort(a: RequestMessage, b: RequestMessage) {
+    return +(a.requestDate || 0) - +(b.requestDate || 0)
+  }
 }

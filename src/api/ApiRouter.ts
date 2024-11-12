@@ -18,6 +18,18 @@ export class ApiRouter {
         requests: this.discordBot.requests.all(),
       });
     });
+
+    this.router.post('/done', (req, res) => {
+      const { id } = req.body;
+      const request = this.discordBot.requests.find(id);
+      if (!request) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+
+      this.discordBot.setDone(request);
+      res.json({ status: 'ok' });
+    });
   }
 
   getRouter() {
