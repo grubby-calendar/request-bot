@@ -43,7 +43,7 @@
             @<span x-text="req.user"></span>
           </div>
           <div x-show="req.requestDate !== null">
-            <span class="font-mono" x-text="moment(req.requestDate).format('DD-MMM-YY')"></span>
+            <span class="font-mono" x-text="`from ${moment(req.requestDate).format('MMM DD')}`"></span>
           </div>
         </div>
 
