@@ -112,9 +112,6 @@ export class DiscordBot {
         const request = this.requests.find(m.id);
         if (!request) return;
         request.override(m);
-        (await m.channel.messages.fetch())
-          ?.sort(this.sortMessages)
-          .forEach(tm => request.override(tm));
         this.broadcast({ type: BroadcastType.UpdateMessage, request });
         console.log(`Updated message (msg-edit): ${request.user} ${request.id}`);
         return;
