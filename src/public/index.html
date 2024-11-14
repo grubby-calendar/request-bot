@@ -98,7 +98,7 @@
                 this.requests.push(data.request);
                 break;
               case 'update-message':
-                this.requests = this.requests.map(m => m.id === data.request.id ? data.request : m);
+                this.requests = this.requests.map(m => m.id === data.request.id ? { ...m, ...data.request } : m);
                 break;
               case 'delete-message':
                 this.requests = this.requests.filter(m => m.id !== data.id);
