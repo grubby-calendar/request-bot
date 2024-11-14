@@ -11,6 +11,13 @@
 </head>
 <body class="!block" style="display: none">
   <div x-data="app" class="p-4 flex flex-col max-w-[400px]">
+    <template x-if="requests.length > 0 && query.get('show') === null">
+      <div class="p-1 text-center text-lg font-medium bg-zinc-800 rounded-lg text-zinc-200">
+        We have <span x-text="onlyPending().length"></span> pending requests
+        <!-- &nbsp;&nbsp;&nbsp;
+        New this week: <span x-text="doneThisWeek().length"></span> -->
+      </div>
+    </template>
     <template x-for="req in onlyPending" :key="req.id">
       <div
         class="relative border-2 rounded-lg bg-zinc-200 p-3 mt-2 w-full"
@@ -129,6 +136,13 @@
           return this.requests
             .filter(req => !req.isDone)
             .slice(0, this.query.get('show') ?? undefined);
+        },
+
+        doneThisWeek() {
+          // since 7 days ago
+          return this.requests
+            .filter(req => req.isDone && +new Date(req.requestDate) > +new Date() - 7 * 24 * 60 * 60 * 1000)
+            .slice(0);
         },
 
         sortRequests() {
